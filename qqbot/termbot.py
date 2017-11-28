@@ -20,10 +20,21 @@ class TermBot(object):
                 if url == 'favicon.ico':
                     return b''
                 argv = [Unquote(x) for x in url.split('/')]
+        elif command.startswith('POST /'):
+            http = True
+            end = command.find('\r\n')
+            if end == -1 or not command[:end-3].endswith(' HTTP/'):
+                argv = []
+            else:
+                url = command[6:end-9].rstrip('/')
+                argv = [Unquote(x) for x in url.split('/')]
+                start = command.rfind('\r\n')
+                content = command[start+2:]
+                argv.append(content)
         else:
             http = False
             argv = command.strip().split(None, 3)
-    
+
         if argv and argv[0] in cmdFuncs:
             try:
                 result, err = cmdFuncs[argv[0]](bot, argv[1:], http)
@@ -32,18 +43,18 @@ class TermBot(object):
                 ERROR(err, exc_info=True)
         else:
             result, err = None, 'QQBot 命令格式错误'
-        
+
         if http:
             rep = {'result':result, 'err': err}
             rep = STR2BYTES(JsonDumps(rep, ensure_ascii=False, indent=4))
             rep = (b'HTTP/1.1 200 OK\r\n' +
-                   b'Connection: close\r\n' + 
+                   b'Connection: close\r\n' +
                    b'Content-Length: ' + STR2BYTES(str(len(rep))) + b'\r\n' +
                    b'Content-Type: text/plain;charset=utf-8\r\n\r\n' +
                    rep)
         else:
             rep = STR2BYTES(str(err or result)) + b'\r\n'
-    
+
         return rep
 
 def cmd_help(bot, args, http=False):
@@ -80,15 +91,15 @@ def cmd_fresh_restart(bot, args, http=False):
 def cmd_list(bot, args, http=False):
     '''2 list buddy|group|discuss [qq|name|key=val]
        2 list group-member|discuss-member oqq|oname|okey=oval [qq|name|key=val]'''
-    
+
     if (len(args) in (1, 2)) and args[0] in ('buddy', 'group', 'discuss'):
         # list buddy
         # list buddy jack
         if not http:
             return bot.StrOfList(*args), None
         else:
-            return bot.ObjOfList(*args)            
-        
+            return bot.ObjOfList(*args)
+
     elif (len(args) in (2, 3)) and args[1] and (args[0] in ('group-member', 'discuss-member')):
         # list group-member xxx班
         # list group-member xxx班 yyy
@@ -96,17 +107,17 @@ def cmd_list(bot, args, http=False):
             return bot.StrOfList(*args), None
         else:
             return bot.ObjOfList(*args)
-        
+
     else:
         return None, 'QQBot 命令格式错误'
 
 def cmd_update(bot, args, http=False):
     '''2 update buddy|group|discuss
        2 update group-member|discuss-member oqq|oname|okey=oval'''
-    
+
     if len(args) == 1 and args[0] in ('buddy', 'group', 'discuss'):
         # update buddy
-        return bot.Update(args[0]), None    
+        return bot.Update(args[0]), None
     elif len(args) == 2 and args[1] and (args[0] in ('group-member', 'discuss-member')):
         # update group-member xxx班
         cl = bot.List(args[0][:-7], args[1])
@@ -121,7 +132,7 @@ def cmd_update(bot, args, http=False):
 
 def cmd_send(bot, args, http=False):
     '''3 send buddy|group|discuss qq|name|key=val message'''
-    
+
     if len(args) == 3 and args[0] in ('buddy', 'group', 'discuss'):
         # send buddy jack hello
         cl = bot.List(args[0], args[1])
@@ -165,10 +176,10 @@ def group_operation(bot, ginfo, minfos, func, exArgs, http):
             result.append('\n'.join(membsResult))
         else:
             result.append({'group': g.__dict__, 'membs_result': membsResult})
-    
+
     if not http:
         result = '\n\n'.join(result)
-    
+
     return result, None
 
 def cmd_group_kick(bot, args, http=False):
@@ -254,7 +265,7 @@ def cmd_plugins(bot, args, http=False):
             return bot.Plugins(), None
     else:
         return None, 'QQBot 命令格式错误'
-                    
+
 for name, attr in dict(globals().items()).items():
     if name.startswith('cmd_'):
         cmdFuncs[name[4:].replace('_', '-')] = attr
