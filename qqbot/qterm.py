@@ -10,25 +10,25 @@ from qqbot.common import BYTES2STR, SYSTEMSTR2BYTES
 from qqbot.mysocketserver import MySocketServer, Query
 from qqbot.mainloop import Put
 
-HOST, DEFPORT = '127.0.0.1', 8188
+HOST, DEFPORT = '0.0.0.0', 8188
 
 class QTermServer(MySocketServer):
     def __init__(self, port, onCommand):
         MySocketServer.__init__(self, HOST, port, 'QQBot-Term 服务器')
         self.response = onCommand
-    
+
     def Run(self):
         if not self.port:
             INFO('QQBot-Term 服务器未开启，qq 命令和 HTTP-API 接口将无法使用')
         else:
             MySocketServer.Run(self)
-    
+
     def onStartFail(self, e):
         ERROR('qq 命令和 HTTP-API 接口将无法使用')
 
     def onStart(self):
         INFO('请在其他终端使用 qq 命令来控制 QQBot ，示例： qq send buddy jack hello')
-    
+
     def onData(self, sock, addr, data):
         Put(MySocketServer.onData, self, sock, addr, data)
 
